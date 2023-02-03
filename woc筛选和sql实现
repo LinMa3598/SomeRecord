@@ -1,0 +1,39 @@
+一、woc 项目筛选 贡献情况筛选规则
+1、项目在+8时区 贡献 超过50%？
+2、项目需要在最近一年中连续贡献（一年中贡献月份超过 几个月？，最近一年的总贡献量有没有要求？）
+   一年中超过6个月都有贡献
+   近一年的贡献超过 总贡献量每年的平均值？ 
+
+3、项目总commit数量有没有要求？
+4、贡献的参与人数有没有要求？
+
+
+二、woc 中国开发者是否在其他项目中有过贡献
+1、找出每个中国开发者的主贡献项目
+2、找出中国开发者在除了主项目之外的其他项目中贡献的情况 
+
+
+
+
+
+
+-- woc项目制定筛选策略
+-- +8 时区 commit 占比超过项目的50%
+select search_key__owner, search_key__repo, sum(author_tz = 8) as tz_8_count, count() all_commit_count
+from gits
+where if_merged = 0
+group by search_key__owner, search_key__repo
+having tz_8_count / all_commit_count >= 0.5
+
+
+;
+-- 连续贡献？ 近一年中都有贡献，可以设定为从2022年开始 有6个月都在贡献
+select search_key__owner, search_key__repo, count()
+from (select search_key__owner, search_key__repo, month
+      from gits
+      where if_merged = 0
+        and toYear(authored_date) = 2022
+      group by search_key__owner, search_key__repo, toYYYYMM(authored_date) as month
+      order by search_key__owner, search_key__repo, month)
+group by search_key__owner, search_key__repo
+having count() > 6

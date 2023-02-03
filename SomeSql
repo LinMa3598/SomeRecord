@@ -1,0 +1,40 @@
+--每个公司 commit 加减行数占比
+select company,
+       max(end_time)          end_time,
+       min(start_time) as     start_time,
+       sum(total__insertions) total__insertions,
+       sum(total__deletions)  total__deletions,
+       sum(total__lines)      total__lines,
+       sum(commit_count)      commit_count,
+       round(total__insertions/(select sum(total__insertions) from gits where search_key__repo = 'linux' and if_merged = 0)*100,3) as insertions_percentage,
+       round(total__deletions/(select sum(total__deletions) from gits where search_key__repo = 'linux' and if_merged = 0)*100,3) as deletions_percentage,
+       round(total__lines/(select sum(total__lines) from gits where search_key__repo = 'linux' and if_merged = 0)*100,3) as all_lines_percentage,
+       round(commit_count/(select count() from gits where search_key__repo = 'linux' and if_merged = 0)*100,3) as commit_percentage
+from (select multiIf(email_domain like '%huawei%' or email_domain = 'hisilicon.com', 'huawei',
+                     email_domain like '%google%' or email_domain = 'android.com' or email_domain = 'chrome.com' or
+                     email_domain = 'chromium.org' or email_domain = 'tensorflow.org', 'google',
+                     email_domain like '%intel%', 'intel', 'redhat') as company,
+             end_time,
+             start_time,
+             total__insertions,
+             total__deletions,
+             total__lines,
+             commit_count
+      from (select splitByChar('@', author_email)[2] as email_domain,
+                   max(authored_date)                as end_time,
+                   min(authored_date)                as start_time,
+                   sum(total__insertions)            as total__insertions,
+                   sum(total__deletions)             as total__deletions,
+                   sum(total__lines)                 as total__lines,
+                   count()                           as commit_count
+            from gits
+            where if_merged = 0
+              and search_key__repo = 'linux'
+              and (email_domain like '%intel%' or email_domain like '%google%' or email_domain like '%redhat%' or
+                   email_domain like '%huawei%' or email_domain = 'android.com' or email_domain = 'chrome.com' or
+                   email_domain = 'chromium.org' or email_domain = 'tensorflow.org' or email_domain = 'hisilicon.com' or
+                   email_domain = 'china.huawei.com')
+            group by email_domain
+            order by total__lines desc))
+group by company
+order by total__lines desc

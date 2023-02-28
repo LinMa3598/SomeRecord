@@ -216,3 +216,276 @@ from (select if(a.login != '', a.login, b.login) as login, create_issues_count, 
                                             'yijunyu') and toYear(created_at) >= 2018
             and search_key__number global in  (select number from github_issues where github_issues.search_key__repo='rust' and  pull_request__url = '' group by number)
  group by node_id) group by login order by issues_comments_count desc) as b on a.login = b.login
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+---------------------------------------------------------------llvm cn author commit次数更改代码行数，文件修改情况  按照月份
+
+-- not merge author
+select author_email,
+       count() as      commit_count,
+       sum(insertions) insertions,
+       sum(deletions)  deletions,
+       sum(lines)      lines,
+        sum(files) as files_count
+from (select *,
+             splitByChar('@', author_email)[2]    as author_email_domain,
+             splitByChar('@', committer_email)[2] as committer_email_domain
+      from (select hexsha,
+                   author_email,
+                   authored_date,
+                   committer_email,
+                   committed_date,
+                   message,
+                   total__lines as insertions,
+                   total__insertions as deletions,
+                   total__deletions as lines,
+                   total__files as files
+            from gits
+            where search_key__repo = 'llvm-project'
+              and if_merged = 0
+              and search_key__owner = 'llvm'
+              and (author_email like '%.cn%' or gits.committer_email like '%.cn%')
+            group by hexsha, author_email,
+                     authored_date,
+                     committer_email,
+                     committed_date,
+                     message,
+                     total__insertions,
+                     total__deletions,
+                     total__files,
+                     total__lines
+)
+         --where author_email like '%iscas.ac.cn%'
+         )
+group by author_email
+order by commit_count desc
+
+
+
+
+
+
+
+-- not merge author month
+select author_email,
+       month,
+       count() as      commit_count,
+       sum(insertions) insertions,
+       sum(deletions)  deletions,
+       sum(lines)      lines,
+        sum(files) as files_count
+from (select *,
+             splitByChar('@', author_email)[2]    as author_email_domain,
+             splitByChar('@', committer_email)[2] as committer_email_domain
+      from (select hexsha,
+                   author_email,
+                   authored_date,
+                   committer_email,
+                   committed_date,
+                   message,
+                   total__lines as insertions,
+                   total__insertions as deletions,
+                   total__deletions as lines,
+                   total__files as files
+            from gits
+            where search_key__repo = 'llvm-project'
+              and if_merged = 0
+              and search_key__owner = 'llvm'
+              and (author_email like '%.cn%' or gits.committer_email like '%.cn%')
+            group by hexsha, author_email,
+                     authored_date,
+                     committer_email,
+                     committed_date,
+                     message,
+                     total__insertions,
+                     total__deletions,
+                     total__files,
+                     total__lines
+)
+         --where author_email like '%iscas.ac.cn%'
+         )
+group by author_email,toYYYYMM(authored_date) as month
+order by author_email ,month
+
+
+
+
+;
+--dir
+select author_email,file_name,insertions,deletions,lines from (select *,
+             splitByChar('@', author_email)[2]    as author_email_domain,
+             splitByChar('@', committer_email)[2] as committer_email_domain
+      from (select hexsha,
+                   author_email,
+                   authored_date,
+                   committer_email,
+                   committed_date,
+                   message,
+                   `files.file_name` as file_name,
+                   `files.insertions` as insertions,
+                   `files.deletions` as deletions,
+                   `files.lines` as lines
+            from gits
+            where search_key__repo = 'llvm-project'
+              and search_key__owner = 'llvm'
+              and if_merged = 0
+              and (author_email like '%.cn%' or gits.committer_email like '%.cn%')
+            group by hexsha, author_email,
+                     authored_date,
+                     committer_email,
+                     committed_date,
+                     message,
+                     `files.file_name`,
+                     `files.insertions`,
+                     `files.deletions`,
+                     `files.lines`)
+         --where author_email like '%iscas.ac.cn%'
+         ) array join file_name,insertions,deletions,lines
+order by author_email
+
+
+
+
+
+
+
+
+
+
+
+-- dir month
+;
+select author_email,
+       month,
+       file_name,
+       sum(insertions) as insertions,
+       sum(deletions)  as deletions,
+       sum(lines)      as lines
+from (select author_email, authored_date, file_name, insertions, deletions, lines
+      from (select *,
+                   splitByChar('@', author_email)[2]    as author_email_domain,
+                   splitByChar('@', committer_email)[2] as committer_email_domain
+            from (select hexsha,
+                         author_email,
+                         authored_date,
+                         committer_email,
+                         committed_date,
+                         message,
+                         `files.file_name`  as file_name,
+                         `files.insertions` as insertions,
+                         `files.deletions`  as deletions,
+                         `files.lines`      as lines
+                  from gits
+                  where search_key__repo = 'llvm-project'
+                    and search_key__owner = 'llvm'
+                    and if_merged = 0
+                    and (author_email like '%.cn%' or gits.committer_email like '%.cn%')
+                  group by hexsha, author_email,
+                           authored_date,
+                           committer_email,
+                           committed_date,
+                           message,
+                           `files.file_name`,
+                           `files.insertions`,
+                           `files.deletions`,
+                           `files.lines`)
+               --where author_email like '%iscas.ac.cn%'
+               ) array join file_name, insertions, deletions, lines)
+group by author_email, toYYYYMM(authored_date) as month, file_name
+order by author_email, month, file_name
+
+
+
+
+
+-- committer
+
+select committer_email,
+       count() as      commit_count
+from (select *,
+             splitByChar('@', author_email)[2]    as author_email_domain,
+             splitByChar('@', committer_email)[2] as committer_email_domain
+      from (select hexsha,
+                   author_email,
+                   authored_date,
+                   committer_email,
+                   committed_date
+            from gits
+            where search_key__repo = 'llvm-project'
+              and search_key__owner = 'llvm'
+              and (author_email like '%.cn%' or gits.committer_email like '%.cn%')
+            group by hexsha, author_email,
+                     authored_date,
+                     committer_email,
+                     committed_date
+
+)
+         --where author_email like '%iscas.ac.cn%'
+         )
+group by committer_email
+order by commit_count desc
+
+
+
+-- committer month
+
+select committer_email,month,
+       count() as      commit_count
+from (select *,
+             splitByChar('@', author_email)[2]    as author_email_domain,
+             splitByChar('@', committer_email)[2] as committer_email_domain
+      from (select hexsha,
+                   author_email,
+                   authored_date,
+                   committer_email,
+                   committed_date
+            from gits
+            where search_key__repo = 'llvm-project'
+              and search_key__owner = 'llvm'
+              and (author_email like '%.cn%' or gits.committer_email like '%.cn%')
+            group by hexsha, author_email,
+                     authored_date,
+                     committer_email,
+                     committed_date
+
+)
+         --where author_email like '%iscas.ac.cn%'
+         )
+group by committer_email,toYYYYMM(committed_date) as month
+order by committer_email,month
+
+
+
+
+

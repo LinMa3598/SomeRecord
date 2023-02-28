@@ -213,4 +213,6 @@ from (select if(a.login != '', a.login, b.login) as login, create_issues_count, 
                                             'surechen',
                                             'wain303009',
                                             'wangkirin',
-                                            'yijunyu') and toYear(created_at) >= 2018 group by node_id) group by login order by issues_comments_count desc) as b on a.login = b.login
+                                            'yijunyu') and toYear(created_at) >= 2018
+            and search_key__number global in  (select number from github_issues where github_issues.search_key__repo='rust' and  pull_request__url = '' group by number)
+ group by node_id) group by login order by issues_comments_count desc) as b on a.login = b.login

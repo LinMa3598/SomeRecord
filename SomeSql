@@ -38,3 +38,179 @@ from (select multiIf(email_domain like '%huawei%' or email_domain = 'hisilicon.c
             order by total__lines desc))
 group by company
 order by total__lines desc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- rust 华为专家 metrics
+select if(a.login != '', a.login, b.login) as login,
+       create_issues_count,
+       issues_comments_count,
+       create_pr_count,
+       reviewed_count,
+       commit_committer_count from (select if(a.login != '', a.login, b.login) as login,
+       create_issues_count,
+       create_pr_count,
+       reviewed_count,
+       commit_committer_count
+from (select if(a.login != '', a.login, b.login) as login, create_issues_count, create_pr_count, reviewed_count
+      from (select if(a.login != '', a.login, b.login) as login, create_issues_count, create_pr_count
+            from (-- 统计issues提出次数 近三年
+                     select login, count() as create_issues_count
+                     from (select argMax(user__login, created_at) as login
+                           from github_issues
+                           where search_key__repo = 'rust'
+                             and pull_request__url = ''
+                             and toYear(created_at) >= 2018
+                           group by node_id)
+                     where login global in ('Amanieu',
+                                            'bdqnghi',
+                                            'davidtwco',
+                                            'GuillaumeGomez',
+                                            'J-ZhengLi',
+                                            'KarliosQu',
+                                            'lcnr',
+                                            'LuuuXXX',
+                                            'm-ou-se',
+                                            'MabinGo',
+                                            'MichaelLing83',
+                                            'mojave2',
+                                            'petrochenkov',
+                                            'QiangHeisenberg',
+                                            'Sea-Chunmiao',
+                                            'SparrowLii',
+                                            'stevetan81',
+                                            'surechen',
+                                            'wain303009',
+                                            'wangkirin',
+                                            'yijunyu')
+                     group by login
+                     order by create_issues_count desc) as a global
+                     full join (-- 统计pr提出次数 近三年
+                select login, count() as create_pr_count
+                from (select argMax(user__login, created_at) as login
+                      from github_pull_requests
+                      where search_key__repo = 'rust'
+                        and toYear(created_at) >= 2018
+                      group by node_id)
+                where login global in ('Amanieu',
+                                       'bdqnghi',
+                                       'davidtwco',
+                                       'GuillaumeGomez',
+                                       'J-ZhengLi',
+                                       'KarliosQu',
+                                       'lcnr',
+                                       'LuuuXXX',
+                                       'm-ou-se',
+                                       'MabinGo',
+                                       'MichaelLing83',
+                                       'mojave2',
+                                       'petrochenkov',
+                                       'QiangHeisenberg',
+                                       'Sea-Chunmiao',
+                                       'SparrowLii',
+                                       'stevetan81',
+                                       'surechen',
+                                       'wain303009',
+                                       'wangkirin',
+                                       'yijunyu')
+                group by login
+                order by create_pr_count desc) as b on a.login = b.login) as a global
+               full join (select login, count() reviewed_count
+                          from (select JSONExtractString(timeline_raw, 'node_id')            as node_id,
+                                       JSONExtractString(JSONExtractString(argMax(timeline_raw,
+                                                                                  parseDateTimeBestEffort(JSONExtractString(timeline_raw, 'submitted_at'))),
+                                                                           'user'), 'login') as login
+                                from github_issues_timeline
+                                where search_key__repo = 'rust'
+                                  and toYear(parseDateTimeBestEffort(JSONExtractString(timeline_raw, 'submitted_at'))) >=
+                                      2018
+                                  and search_key__event = 'reviewed'
+
+                                group by node_id)
+                          where login global in ('Amanieu',
+                                                 'bdqnghi',
+                                                 'davidtwco',
+                                                 'GuillaumeGomez',
+                                                 'J-ZhengLi',
+                                                 'KarliosQu',
+                                                 'lcnr',
+                                                 'LuuuXXX',
+                                                 'm-ou-se',
+                                                 'MabinGo',
+                                                 'MichaelLing83',
+                                                 'mojave2',
+                                                 'petrochenkov',
+                                                 'QiangHeisenberg',
+                                                 'Sea-Chunmiao',
+                                                 'SparrowLii',
+                                                 'stevetan81',
+                                                 'surechen',
+                                                 'wain303009',
+                                                 'wangkirin',
+                                                 'yijunyu')
+                          group by login
+                          order by reviewed_count desc) as b on a.login = b.login) as a global
+         full join (-- 作为一个committer
+    select login, count() as commit_committer_count
+    from (select sha, argMax(committer__login, commit__committer__date) as login
+          from github_commits
+          where search_key__repo = 'rust'
+            and toYear(commit__committer__date) >= 2018
+            and committer__login global in ('Amanieu',
+                                            'bdqnghi',
+                                            'davidtwco',
+                                            'GuillaumeGomez',
+                                            'J-ZhengLi',
+                                            'KarliosQu',
+                                            'lcnr',
+                                            'LuuuXXX',
+                                            'm-ou-se',
+                                            'MabinGo',
+                                            'MichaelLing83',
+                                            'mojave2',
+                                            'petrochenkov',
+                                            'QiangHeisenberg',
+                                            'Sea-Chunmiao',
+                                            'SparrowLii',
+                                            'stevetan81',
+                                            'surechen',
+                                            'wain303009',
+                                            'wangkirin',
+                                            'yijunyu')
+          group by sha)
+    group by login
+    order by commit_committer_count desc) as b on a.login = b.login) as a global full join (select login,count() as issues_comments_count from (select node_id,argMax(user__login,created_at) as login from github_issues_comments where search_key__repo = 'rust' and user__login global in ('Amanieu',
+                                            'bdqnghi',
+                                            'davidtwco',
+                                            'GuillaumeGomez',
+                                            'J-ZhengLi',
+                                            'KarliosQu',
+                                            'lcnr',
+                                            'LuuuXXX',
+                                            'm-ou-se',
+                                            'MabinGo',
+                                            'MichaelLing83',
+                                            'mojave2',
+                                            'petrochenkov',
+                                            'QiangHeisenberg',
+                                            'Sea-Chunmiao',
+                                            'SparrowLii',
+                                            'stevetan81',
+                                            'surechen',
+                                            'wain303009',
+                                            'wangkirin',
+                                            'yijunyu') and toYear(created_at) >= 2018 group by node_id) group by login order by issues_comments_count desc) as b on a.login = b.login
